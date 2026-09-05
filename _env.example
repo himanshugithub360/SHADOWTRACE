@@ -1,0 +1,161 @@
+# =============================================================================
+# .env.example — WhatsApp Chat Analyzer, AI Assistant + RAG (4-provider)
+# =============================================================================
+# Copy this file to `.env` in the project root and fill in the keys you
+# actually have. Nothing below is required for the app to run — with no
+# keys set, every non-AI tab works exactly the same, the AI tab shows a
+# setup notice instead of an error, and Semantic Search still works via
+# a free, local, no-API-key embedding fallback (lower quality, zero cost).
+#
+# NEVER commit your real `.env` file — only this `.env.example` (with
+# placeholder/blank values) belongs in version control.
+
+# -----------------------------------------------------------------------
+# AI provider mode
+# -----------------------------------------------------------------------
+# "auto"    -> try providers in priority order (Gemini -> Groq ->
+#              OpenRouter -> Mistral), using only the ones with a key
+#              configured below, stopping at the first one that
+#              succeeds. Normally contacts exactly ONE provider per
+#              request.
+# "gemini" / "groq" / "openrouter" / "mistral"
+#           -> use ONLY that provider. If its key below is missing, the
+#              AI tab shows a clear configuration message instead of
+#              silently switching to another provider.
+AI_PROVIDER=auto
+
+# Get a Gemini key: https://aistudio.google.com/app/apikey
+GOOGLE_API_KEY=
+
+# Get a Groq key: https://console.groq.com/keys
+GROQ_API_KEY=
+
+# Get an OpenRouter key: https://openrouter.ai/keys
+# OpenRouter replaces OpenAI as the direct chat-generation fallback and
+# gives access to many vendors' models through one OpenAI-compatible
+# API — model ids are "vendor/model", e.g. "openai/gpt-4o-mini" or
+# "anthropic/claude-3.5-haiku". Browse models: https://openrouter.ai/models
+OPENROUTER_API_KEY=
+
+# Get a Mistral key: https://console.mistral.ai/api-keys
+MISTRAL_API_KEY=
+
+# Optional — override the default models.
+GEMINI_CHAT_MODEL=gemini-3.6-flash
+GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
+GROQ_CHAT_MODEL=llama-3.3-70b-versatile
+OPENROUTER_CHAT_MODEL=openai/gpt-4o-mini
+OPENROUTER_EMBEDDING_MODEL=openai/text-embedding-3-small
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+# Optional OpenRouter attribution headers (shown on openrouter.ai
+# leaderboards); harmless to leave blank.
+OPENROUTER_SITE_URL=
+OPENROUTER_SITE_NAME=
+MISTRAL_CHAT_MODEL=mistral-large-latest
+
+# Note: embeddings (used by RAG / Semantic Search) always prefer Gemini,
+# then OpenRouter, then a local free fallback — independent of
+# AI_PROVIDER above. Groq and Mistral are never used for embeddings.
+
+# -----------------------------------------------------------------------
+# LLM behavior / token cost
+# -----------------------------------------------------------------------
+LLM_TEMPERATURE=0.3
+# Bumped from 1024 -- this app's longer features (Recommendations'
+# exactly-5-items format, Insights' 5-8 bullets, Reports' 6 sections)
+# routinely need more than 1024 tokens once a "thinking" model's
+# reasoning tokens are also drawn from this same budget (see
+# GEMINI_THINKING_BUDGET below).
+LLM_MAX_OUTPUT_TOKENS=2048
+
+# Hard ceiling for the one-time "response looked truncated" retry
+# (ai_helper._cached_ai_request), regardless of how large
+# LLM_MAX_OUTPUT_TOKENS is configured. The retry budget is
+# min(LLM_MAX_OUTPUT_TOKENS * 2, this cap), and only fires once, on the
+# same provider that produced the truncated response.
+LLM_MAX_OUTPUT_TOKENS_RETRY_CAP=4096
+
+# Per-request network timeout (seconds) applied to every provider client.
+# Keeps a slow/unresponsive provider from blocking the multi-provider
+# fallback on its SDK's own much longer default timeout.
+AI_REQUEST_TIMEOUT_SECONDS=20
+
+# Gemini's 2.5+/3.x "thinking" model families spend part of their output
+# token budget on internal reasoning before writing the visible answer,
+# drawn from the SAME LLM_MAX_OUTPUT_TOKENS budget. This app's features
+# (grounded summaries/insights/recommendations from already-computed
+# stats) don't need deep chain-of-thought, so 0 (thinking disabled) is
+# the default -- raise it if a future Gemini model benefits from some
+# reasoning budget. Only applied when the installed langchain-google-genai
+# version actually exposes a thinking-budget parameter; otherwise this is
+# a no-op rather than an error.
+GEMINI_THINKING_BUDGET=0
+
+# How many previous Q&A turns are replayed as conversational memory in
+# "Ask & Chat". Older turns stay visible in the UI but drop out of the
+# prompt.
+AI_MEMORY_TURNS=6
+
+# Safety cap on raw messages fed directly into a prompt (e.g. Chat
+# Summary, Highlights, Personality Analysis). Most grounding comes from
+# already-computed stats (_stats_block), not raw text, so this can stay
+# low.
+AI_MAX_RAW_MESSAGES_IN_PROMPT=150
+
+# Route obviously-deterministic questions ("Who talks the most?")
+# straight to Python analytics instead of any LLM. Set to "false" to
+# always use the LLM/RAG path (useful for testing prompts).
+AI_DETERMINISTIC_ROUTING=true
+
+# How long (seconds) a provider is skipped after it returns a quota
+# (429) failure, before being tried again in a later request this same
+# session. This is NOT a background health check — it only ever
+# triggers off a real request's real failure.
+PROVIDER_QUOTA_COOLDOWN_SECONDS=120
+
+# Maximum corrective retries for malformed (not truncated) AI
+# Recommendations responses that didn't come back as exactly 5 numbered
+# items. Set to 0 to disable the corrective retry entirely.
+AI_MAX_RETRY=1
+
+# Cache-namespacing tag for AI prompt templates. Bump this (e.g. "v2") to
+# invalidate every previously-cached AI response after materially editing
+# prompt.py, without waiting for the underlying data to change.
+AI_PROMPT_VERSION=v1
+
+# -----------------------------------------------------------------------
+# RAG / vector store
+# -----------------------------------------------------------------------
+# "faiss" (default, fast, file-based) or "chroma" (persistent client).
+VECTOR_STORE_BACKEND=faiss
+
+# Chunking — how chat messages are grouped into embeddable documents.
+RAG_CHUNK_SIZE=1000
+RAG_CHUNK_OVERLAP=150
+
+# How many chunks are retrieved per question / search.
+RAG_TOP_K=6
+
+# Persist the vector index to disk (under .vector_store/), keyed by the
+# same chat+filters+user fingerprint used for the in-session cache.
+# Re-opening the same chat selection loads the saved index instead of
+# re-embedding every message. Set to "false" to keep indexes in-memory
+# only (cleared on process restart).
+RAG_PERSIST_INDEX=true
+
+# How long (seconds) an embedding provider (Gemini/OpenRouter) is
+# skipped after a quota failure before being tried again.
+EMBEDDING_PROVIDER_COOLDOWN_SECONDS=600
+
+# How many times a transient (network/5xx) embedding failure is retried
+# against the SAME provider before falling through to the next one in
+# the embedding fallback chain.
+EMBEDDING_TRANSIENT_RETRY_ATTEMPTS=1
+
+# -----------------------------------------------------------------------
+# Performance
+# -----------------------------------------------------------------------
+# Opt-in timing/debug panel in the sidebar (preprocessing, filtering,
+# RAG indexing, AI stats prep, LLM request time, etc.). Off by default —
+# never enable this for real end users, it's a developer tool only.
+PERFORMANCE_DEBUG=false

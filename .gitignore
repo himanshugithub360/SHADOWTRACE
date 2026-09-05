@@ -1,0 +1,43 @@
+# Environment variables
+.env
+.env.*
+
+
+# Streamlit secrets
+.streamlit/config.toml
+
+# Virtual environments
+.venv/
+venv/
+
+
+# Python cache
+__pycache__/
+
+
+# Model / cache files
+.cache/
+hf_cache/
+models/
+
+# Vector indexes / private data
+*.faiss
+*.pkl
+*.pickle
+vector_data/
+.vector_store/
+
+# Uploaded chat files
+uploads/
+data/
+MIGRATION.md
+SHADOWTRACE_AUDIT_REPORT_2.md
+test_lazy_loading.py
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

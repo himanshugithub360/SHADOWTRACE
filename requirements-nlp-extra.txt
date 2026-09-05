@@ -1,0 +1,24 @@
+# Phase 4 — optional NLP upgrades.
+#
+# Nothing in requirements.txt depends on these. Every feature that can
+# use one of these packages (topics.py, toxicity.py) has a working
+# scikit-learn / rule-based fallback and checks an `*_AVAILABLE` flag,
+# so the app runs fine without this file. Install it only if you want
+# the higher-quality transformer-based versions of:
+#
+#   - Topic Modeling  -> BERTopic (embeddings + clustering) instead of LDA
+#   - Keyword Extraction -> KeyBERT (embedding-based) instead of TF-IDF
+#   - Toxicity Detection -> Detoxify (fine-tuned transformer) instead of
+#                            the keyword heuristic
+#
+# These pull in torch + transformers/sentence-transformers, which add a
+# large download and noticeably slower first-run model loading — that's
+# why they're kept out of the core requirements.txt.
+#
+#   pip install -r requirements-nlp-extra.txt
+
+bertopic>=0.16
+keybert>=0.8
+sentence-transformers>=2.7
+detoxify>=0.5.2
+torch>=2.2

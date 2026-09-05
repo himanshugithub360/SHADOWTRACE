@@ -1,0 +1,58 @@
+# Core app (Phase 1-3)
+# Bumped from >=1.36 in Part 4: nav.py uses st.segmented_control for the
+# new section navigation (falls back to st.radio automatically on older
+# Streamlit versions, but >=1.37 gives the intended tab-like pill UI).
+streamlit>=1.37
+pandas>=2.2
+plotly>=5.22
+wordcloud>=1.9
+urlextract>=1.9
+emoji>=2.12
+openpyxl>=3.1
+reportlab>=4.0  # PDF export (Tools tab) — replaces the old JSON export
+
+# Phase 4 — NLP (lightweight, always installed; everything below works
+# with pure scikit-learn/rule-based fallbacks even if the optional heavy
+# packages in requirements-nlp-extra.txt are never installed)
+scikit-learn>=1.4
+vaderSentiment>=3.3.2
+langdetect>=1.0.9
+textstat>=0.7.3
+yake>=0.4.8
+
+# Phase 5 — AI Assistant (LangChain + Gemini/OpenAI + RAG). Core pieces
+# below are required for the AI tab to render; the app still runs fully
+# without any API key configured (the AI tab shows setup instructions
+# instead of crashing — see ai_helper.AI_SETUP_MESSAGE), and Semantic
+# Search still works via a local, key-free embedding fallback.
+python-dotenv>=1.0
+langchain>=0.3
+langchain-core>=0.3
+langchain-community>=0.3
+langchain-text-splitters>=0.3
+langchain-google-genai>=2.0     # Gemini chat + embeddings (primary provider)
+langchain-openai>=0.2           # OpenAI embeddings (fallback #1, unchanged) AND
+                                 # the OpenAI-compatible client used to reach
+                                 # OpenRouter for chat generation (fallback #2,
+                                 # see config.OPENROUTER_BASE_URL / ai_helper.py)
+faiss-cpu>=1.8                  # Default vector store backend
+langchain-chroma>=0.1           # Optional vector store backend
+chromadb>=0.5                   # Required only if VECTOR_STORE_BACKEND=chroma
+
+# Phase 6 — AI + RAG Optimization introduces NO new dependencies. It
+# reuses FAISS's built-in save_local/load_local (already part of
+# langchain-community's FAISS wrapper above) for on-disk index
+# persistence, and Chroma's existing persistence for the chroma backend.
+
+# AI Request Optimization — 4-provider reliability (Gemini -> Groq ->
+# OpenRouter -> Mistral). langchain-groq and langchain-mistralai are
+# thin LangChain wrappers (no extra transitive deps beyond their own
+# HTTP clients) — chosen specifically to avoid pulling in a second,
+# unrelated SDK per provider. OpenRouter needs no separate package: it
+# speaks the OpenAI Chat Completions wire format, so it's reached via
+# langchain-openai's ChatOpenAI pointed at a different base_url (see
+# above). Generation only; none of these three are ever used for
+# embeddings (embeddings stay on the Gemini/OpenAI/local chain in
+# vector_store.py, unchanged).
+langchain-groq>=0.2             # Groq chat (fallback #1)
+langchain-mistralai>=0.2        # Mistral chat (fallback #3)
