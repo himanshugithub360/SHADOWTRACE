@@ -8,6 +8,45 @@ SHADOWTRACE is an AI-powered conversation intelligence application built on Stre
 
 ---
 
+## 🌐 Try SHADOWTRACE Online
+
+Experience SHADOWTRACE directly in your browser — no installation required.
+
+🚀 **Live Application:**  
+👉 [Launch SHADOWTRACE](https://shadowtrace.streamlit.app/)
+
+Upload your exported WhatsApp chat, apply filters, and uncover hidden patterns, people, moments, and AI-powered insights.
+
+---
+
+## 📤 How to Export Your WhatsApp Chat
+
+SHADOWTRACE analyzes exported WhatsApp chat files. Before uploading your conversation, export the chat **without media**.
+
+### 📱 Android
+
+1. Open **WhatsApp**.
+2. Open the chat you want to analyze.
+3. Tap the **three dots (⋮)** in the top-right corner.
+4. Select **More → Export chat**.
+5. Choose **Without media**.
+6. Save or share the exported `.txt` file.
+7. Upload the file to SHADOWTRACE.
+
+### 🍎 iPhone (iOS)
+
+1. Open **WhatsApp**.
+2. Open the chat you want to analyze.
+3. Tap the **contact or group name** at the top.
+4. Scroll down and select **Export Chat**.
+5. Choose **Without Media**.
+6. Save the exported `.txt` file.
+7. Upload the file to SHADOWTRACE.
+
+> 🔒 **Privacy Tip:** Always select **Without Media**. SHADOWTRACE only needs the exported text conversation for analysis.
+
+---
+
 ## 🎥 SHADOWTRACE in Action
 
 <!-- [▶ Watch the SHADOWTRACE Demo](YOUR_VIDEO_LINK_HERE) -->
