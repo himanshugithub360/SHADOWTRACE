@@ -1,22 +1,4 @@
-"""
-sentiment.py
-============
-Phase 4 — NLP: sentiment analysis (VADER), emotion detection, and
-per-user / per-month "most important words" (TF-IDF weighted).
 
-Sentiment engine
------------------
-Uses the self-contained `vaderSentiment` package (bundles its own
-lexicon, so no NLTK corpus download is required at runtime). VADER is
-rule-based and tuned for short, informal, emoji/slang-heavy text —
-a good fit for WhatsApp messages — and returns a "compound" score in
-[-1, 1] combining positive/negative/neutral intensity.
-
-If `vaderSentiment` isn't installed, every function here still runs and
-returns a neutral (0.0 / "Neutral") result instead of crashing —
-`VADER_AVAILABLE` tells app.py whether to show a "using placeholder"
-notice.
-"""
 from __future__ import annotations
 
 import pandas as pd
