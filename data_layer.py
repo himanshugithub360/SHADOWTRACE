@@ -1,37 +1,4 @@
-"""
-data_layer.py
-=============
-Phase 3 — Caching + Common Data Layer.
 
-This module owns exactly three things:
-
-1. A stable, cheap fingerprint for the uploaded chat file.
-2. The ONE cached parse of the raw .txt into a DataFrame (with cheap,
-   reusable dtypes applied once).
-3. A cached filtering layer (user + every sidebar filter) so tabs stop
-   re-deriving `df[df["user"] == selected_user]` + filter logic on
-   every rerun.
-
-What this module deliberately does NOT do:
-- No sentiment, toxicity, topic, embedding, RAG, or AI-summary
-  precomputation. Those stay exactly where they were (sentiment.py,
-  topics.py, toxicity.py, ai_helper.py), computed lazily per tab.
-- No UI code, no Streamlit widgets — just cached data functions.
-
-Cache key design
------------------
-`load_and_preprocess` and `get_filtered_view` both take the DataFrame
-(or raw text) as an underscore-prefixed argument, which tells
-Streamlit's `st.cache_data` NOT to hash it. Instead, both take an
-explicit `fingerprint: str` argument (a cheap md5 of the uploaded
-file's raw bytes) as the real cache key. This means:
-
-- Hashing cost per rerun is O(1) (a short string), not O(file size).
-- A fresh upload (different fingerprint) can never accidentally reuse
-  a previous chat's cached parse or filtered slice.
-- Re-uploading the *same* file (same fingerprint) hits the cache
-  instead of re-parsing.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -56,18 +23,7 @@ def compute_fingerprint(raw_bytes: bytes) -> str:
     return hashlib.md5(raw_bytes).hexdigest()
 
 
-# ---------------------------------------------------------------------------
-# Safe decoding — the ONE place raw upload bytes get turned into text.
-# ---------------------------------------------------------------------------
-# Most WhatsApp exports are plain UTF-8. Some phones/export tools prepend a
-# byte-order mark, and a small number of older/unusual exports use a
-# different encoding entirely. Previously app.py called
-# `raw_bytes.decode("utf-8")` directly in three separate places, so any
-# file that wasn't clean UTF-8 crashed the upload with a raw
-# UnicodeDecodeError instead of a friendly message. This is now the single
-# decoding path every caller (landing-page preview, the "analyzing" screen,
-# and the dashboard reload) goes through, so parsing, fingerprinting, and
-# caching all see identical text for the same file.
+
 _DECODE_FALLBACK_ENCODINGS: tuple[str, ...] = ("utf-16", "cp1252")
 
 
