@@ -1,16 +1,4 @@
-"""
-toxicity.py
-===========
-Phase 4 — NLP: toxicity/abuse/hate-speech detection and spam detection.
 
-Toxicity detection uses a small, generic keyword heuristic (see
-`config.PROFANITY_WORDS`) — deliberately mild and non-exhaustive, a
-stand-in signal rather than moderation-grade coverage. This module
-previously supported an optional Detoxify (torch/transformers) backend
-for higher-quality scoring; that path has been removed to keep the app
-lightweight and fast to start (no heavy model download/load). See
-MIGRATION.md if you want to reintroduce a transformer-based backend.
-"""
 from __future__ import annotations
 
 import re
@@ -62,19 +50,85 @@ def score_toxicity(text: str) -> dict:
 
 
 def _heuristic_toxicity(text: str) -> dict:
-    text_l = text.lower()
+    """
+    Lightweight toxicity scoring using separate toxic words and phrases.
+
+    Toxic phrases provide stronger contextual evidence than individual
+    toxic words, while the final score remains normalized to [0, 1].
+    """
+
+    text_l = text.lower().strip()
+
+    if not text_l:
+        return {k: 0.0 for k in _TOXICITY_KEYS}
+
+    # ---------------------------------------------------------------
+    # 1. Detect toxic phrases
+    # ---------------------------------------------------------------
+    phrase_hits = sum(
+        1
+        for phrase in config.TOXIC_PHRASES
+        if phrase in text_l
+    )
+
+    # ---------------------------------------------------------------
+    # 2. Detect individual toxic words
+    # ---------------------------------------------------------------
     words = re.findall(r"[a-zA-Z']+", text_l)
+
+    word_hits = sum(
+        1
+        for word in words
+        if word in config.TOXIC_WORDS
+    )
+
     if not words:
         return {k: 0.0 for k in _TOXICITY_KEYS}
 
-    hits = sum(1 for w in words if w in config.PROFANITY_WORDS)
-    caps_ratio = sum(1 for c in text if c.isupper()) / max(1, len(text))
-    exclaim_boost = min(text.count('!'), 3) * 0.02
-    caps_boost = 0.1 if (caps_ratio > 0.6 and len(text) > 8) else 0.0
+    # ---------------------------------------------------------------
+    # 3. Context signals
+    # ---------------------------------------------------------------
+    caps_ratio = (
+        sum(1 for char in text if char.isupper())
+        / max(1, len(text))
+    )
 
-    toxicity = min(1.0, round(hits / len(words) + caps_boost + exclaim_boost, 4))
-    return {"toxicity": toxicity, "obscene": toxicity, "insult": toxicity, "threat": 0.0, "identity_attack": 0.0}
+    exclaim_boost = min(text.count("!"), 3) * 0.02
 
+    caps_boost = (
+        0.1
+        if caps_ratio > 0.6 and len(text) > 8
+        else 0.0
+    )
+
+    # ---------------------------------------------------------------
+    # 4. Calculate toxicity
+    #
+    # Phrase hits are stronger than individual word hits.
+    # ---------------------------------------------------------------
+    word_score = word_hits / len(words)
+
+    # Each toxic phrase adds a stronger contextual signal.
+    phrase_score = min(phrase_hits * 0.35, 0.7)
+
+    toxicity = min(
+        1.0,
+        round(
+            word_score
+            + phrase_score
+            + caps_boost
+            + exclaim_boost,
+            4,
+        ),
+    )
+
+    return {
+        "toxicity": toxicity,
+        "obscene": toxicity,
+        "insult": toxicity,
+        "threat": 0.0,
+        "identity_attack": 0.0,
+    }
 
 def classify_toxicity(scores: dict) -> str:
     """Map sub-scores to a single label: Clean / Offensive / Abusive / Hate Speech."""
