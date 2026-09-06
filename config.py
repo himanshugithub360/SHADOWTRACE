@@ -887,7 +887,7 @@ TOXIC_WORDS: set[str] = {
 "mammey", "moot", "mut", "mootne", "mutne", "mooth", "muth", "nunni", "paaji", "paji", "pesaab", "pesab", "peshaab", "peshab",
 "pilla", "pillay", "pille", "pilley", "pisaab", "pisab", "pkmkb",
 "porkistan", "raand", "rand", "randi", "randy", "suar", "tatte",
-"tatti", "tatty", "ullu"
+"tatti", "tatty", "ullu",
 }
 
 
