@@ -1,30 +1,4 @@
-"""
-app.py
-======
-Entry point for the WhatsApp Chat Analyzer Streamlit dashboard.
 
-This file is intentionally kept "thin": it wires together the sidebar
-(upload + filters), the section navigation, and calls into helper.py
-(statistics), charts.py (Plotly figures), and utils.py (filters, KPIs,
-search, export). No data-crunching logic lives here directly.
-
-Part 4 — True lazy section loading
-------------------------------------
-Previously every analytics feature lived inside a `with tab:` block
-under `st.tabs()`. Streamlit executes EVERY tab body on EVERY rerun
-regardless of which tab is visible, so switching to "Overview" was
-silently re-running Sentiment, Topics, Toxicity, and the AI/RAG stack
-too. See nav.py for the full explanation.
-
-The fix: navigation is now a plain single-select control (see
-`nav.top_nav` / `nav.sub_nav`), and the whole layout is a chain of
-`if/elif` branches, each calling exactly one `render_*()` function.
-Only the branch matching the current selection executes — everything
-else is skipped entirely, not just visually hidden.
-
-Run with:
-    streamlit run app.py
-"""
 import base64
 import contextlib
 import hashlib
@@ -49,14 +23,7 @@ import toxicity
 import utils
 import vector_store
 
-# ---------------------------------------------------------------------------
-# SHADOWTRACE design system
-# ---------------------------------------------------------------------------
-# Pure presentation layer: CSS only, injected on top of whatever
-# utils.inject_custom_css() already does. Nothing here touches data,
-# caching, navigation logic, or reruns — it only restyles the DOM
-# Streamlit already renders. Safe to delete without affecting any
-# functionality.
+
 _SHADOWTRACE_CSS = """
 <style>
 :root{
