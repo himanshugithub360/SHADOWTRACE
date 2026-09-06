@@ -59,7 +59,7 @@ def retrieve(
     fingerprint: Optional[str] = None,
     backend: Optional[str] = None,
 ) -> list[dict]:
-       query = (query or "").strip()
+    query = (query or "").strip()
     if not query:
         return []
 
