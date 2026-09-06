@@ -1,56 +1,3 @@
-"""
-vector_store.py
-================
-Phase 5 — AI Assistant: turns the (filtered) chat DataFrame into
-embedded, searchable documents and manages the FAISS / ChromaDB index
-used for RAG (Retrieval-Augmented Generation).
-
-Design principle
------------------
-Just like Phase 4's optional-dependency pattern (Detoxify, BERTopic,
-KeyBERT), embeddings degrade gracefully instead of crashing the app —
-and, since Phase 21, that fallback is a REAL runtime safety net, not
-just a construction-time one:
-
-    Gemini embeddings (GOOGLE_API_KEY set)
-        -> OpenRouter embeddings (OPENROUTER_API_KEY set)
-        -> local, dependency-light hashing embeddings (no key needed)
-
-A provider can fail either when its client is first built (missing
-key, bad import) OR later, mid-request (quota exhausted, auth revoked,
-model renamed, a network blip) — this module now handles both. See
-`_embed_texts_with_fallback` and `FallbackEmbeddings` below.
-
-The local fallback is deliberately simple (a hashed bag-of-words
-vector) — it's a stand-in so Semantic Search / RAG still *work* with
-zero API cost/config for local development and demos, not a
-replacement for real embeddings. `EMBEDDINGS_BACKEND` / `EMBEDDINGS_MODEL`
-tell app.py/nav.py's (debug-only) status which mode last actually
-succeeded.
-
-CRITICAL invariant — never mix embedding spaces
-------------------------------------------------
-A single FAISS/Chroma index must never contain vectors produced by two
-different embedding backends/models: their vector spaces are not
-comparable, so "similarity" scores across them would be meaningless.
-Every code path below either (a) embeds an ENTIRE batch with one
-provider and discards it completely on failure before trying the next
-provider (never merges partial results from two providers), or (b)
-detects that a persisted index's pinned provider is no longer usable
-and discards + rebuilds the WHOLE index with the current provider,
-rather than silently querying it with a different provider's vectors.
-
-This module deliberately does NOT import or reuse anything from
-ai_helper.py's AI *generation* fallback chain (Gemini -> Groq ->
-OpenRouter -> Mistral, config.PROVIDER_PRIORITY /
-config.PROVIDER_QUOTA_COOLDOWN_SECONDS). Embedding fallback has its own
-priority list (config.EMBEDDING_PROVIDER_PRIORITY), its own cooldown
-window (config.EMBEDDING_PROVIDER_COOLDOWN_SECONDS), and its own
-in-memory bookkeeping (`_embedding_cooldowns` / `_embedding_disabled`
-below) — a generation provider going down (or a user pinning
-AI_PROVIDER to one provider) has zero effect on which embedding
-provider Semantic Search / RAG use, and vice versa.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -142,10 +89,7 @@ _INVALID_REQUEST_MARKERS = ("400", "invalid_argument", "invalid request", "unsup
 
 
 def _classify_embedding_error(exc: Exception) -> str:
-    """Return one of: "quota", "auth", "model_not_found", "network",
-    "transient", "invalid_request", "unknown". Order matters — e.g. a
-    404 is checked against MODEL_NOT_FOUND before the more generic
-    INVALID_REQUEST bucket."""
+    
     msg = str(exc).lower()
     if any(m in msg for m in _QUOTA_MARKERS):
         return "quota"
@@ -172,11 +116,7 @@ def _start_cooldown(provider: str) -> None:
 
 
 def _disable_provider(provider: str) -> None:
-    """Auth failures disable a provider for the rest of THIS process —
-    a bad/revoked key won't fix itself mid-session, so retrying it on
-    every subsequent chat/query would just waste a round trip and
-    reproduce the same failure. (Restarting the app re-enables it, in
-    case the key was fixed in `.env` and the process restarted.)"""
+   
     _embedding_disabled.add(provider)
 
 
@@ -263,15 +203,7 @@ def _client_for(provider: str) -> Optional[Embeddings]:
 
 
 def get_embeddings() -> Embeddings:
-    """Best-effort single client for callers that just need *a* working
-    embeddings object without needing the full runtime fallback/pinning
-    guarantee (e.g. Chroma's "does this collection already have
-    vectors?" probe, which never itself calls embed_query/embed_documents).
-    Skips providers currently cooling down or disabled. Real runtime
-    fallback-on-failure for actual embedding calls happens in
-    `_embed_texts_with_fallback` / `FallbackEmbeddings` below — this
-    function intentionally does not update EMBEDDINGS_BACKEND, since
-    constructing a client is not the same as it having succeeded."""
+ 
     for provider in config.EMBEDDING_PROVIDER_PRIORITY:
         if not _provider_available(provider):
             continue
@@ -282,24 +214,7 @@ def get_embeddings() -> Embeddings:
 
 
 def _embed_texts_with_fallback(texts: list[str]) -> tuple[list[list[float]], str, str]:
-    """Embed a whole batch of texts, trying providers in
-    config.EMBEDDING_PROVIDER_PRIORITY order. Never mixes vectors from
-    different providers: if a provider fails partway through a batch,
-    everything it produced is discarded and the NEXT provider embeds the
-    ENTIRE batch again from scratch — the caller only ever sees vectors
-    from exactly one provider.
 
-    Returns:
-        (vectors, backend_name, model_name) from whichever provider
-        succeeded. "local" always succeeds (pure Python, no
-        network/key), so this only raises if something is very wrong.
-
-    Raises:
-        EmbeddingRequestError: the request itself was invalid (kind ==
-            "invalid_request") — retrying the same malformed input
-            against every other provider would not help, so this fails
-            fast instead of burning through the whole chain.
-    """
     last_exc: Optional[Exception] = None
 
     for provider in config.EMBEDDING_PROVIDER_PRIORITY:
@@ -339,30 +254,13 @@ def _embed_texts_with_fallback(texts: list[str]) -> tuple[list[list[float]], str
                     continue  # one small retry on the SAME provider
                 break  # retries exhausted (or "unknown") -- fall through to next provider
 
-    # "local" is always in the chain and always available/succeeds, so
-    # reaching here means something unexpected happened even in the
-    # local fallback -- surface a clear, user-safe message rather than
-    # letting a raw exception escape.
+
     raise EmbeddingRequestError(
         "We couldn't prepare this conversation for search right now. Please try again in a moment."
     ) from last_exc
 
 
 class FallbackEmbeddings(Embeddings):
-    """LangChain `Embeddings` wrapper providing runtime multi-provider
-    fallback, safe to hand to FAISS/Chroma as their stored embedding
-    function.
-
-    CRITICAL invariant: once this wrapper's first successful
-    `embed_documents()` call has picked a provider (index build time),
-    it PINS itself to that exact provider/model for every subsequent
-    `embed_query()` call — it will NEVER silently switch providers for
-    queries against an already-built index, because that would mix two
-    incompatible vector spaces. If the pinned provider later fails at
-    query time, `embed_query()` raises `EmbeddingRequestError` instead;
-    callers (see rag.py) catch that, discard the now-stale index, and
-    rebuild it fresh with whatever provider is currently best.
-    """
 
     def __init__(self, pinned_backend: Optional[str] = None, pinned_model: Optional[str] = None):
         self.backend: Optional[str] = pinned_backend
@@ -408,21 +306,7 @@ class FallbackEmbeddings(Embeddings):
 # DataFrame -> Documents
 # ---------------------------------------------------------------------------
 def messages_to_documents(df: pd.DataFrame) -> list[Document]:
-    """Convert chat rows into one Document per message, with metadata
-    the retriever/UI can use to show source/date/user.
-
-    Args:
-        df: Chat DataFrame (already filtered to whatever scope should
-            be indexed — e.g. the sidebar-filtered selection).
-
-    Returns:
-        A list of `langchain_core.documents.Document`, skipping empty
-        rows. Each page_content is "User: message" so the embedded text
-        keeps speaker context. `metadata["message_index"]` is this
-        document's position among the *kept* (non-empty, non-media)
-        messages for this selection — used by `chunk_documents` below
-        to record which message range each chunk came from.
-    """
+ 
     docs: list[Document] = []
     for i, (_, row) in enumerate(df.iterrows()):
         message = str(row.get("message", "")).strip()
@@ -439,26 +323,7 @@ def messages_to_documents(df: pd.DataFrame) -> list[Document]:
 
 
 def chunk_documents(docs: list[Document]) -> list[Document]:
-    """Group individual message-Documents into windows of consecutive
-    messages sized for embedding (single messages are often too
-    short/context-free on their own).
 
-    Fix 3 (RAG metadata preservation): the previous implementation
-    joined every message into one giant string and ran a character
-    splitter over it, which meant every chunk's metadata was empty —
-    there was no way to tell which users/dates/messages a retrieved
-    chunk actually came from. This version accumulates whole messages
-    (never splitting a message's own text) up to `config.RAG_CHUNK_SIZE`
-    characters, so each resulting chunk can carry real metadata:
-    the participant(s) in it, its date range, and the message index
-    range it spans — enough for retrieval results to be explainable.
-
-    `config.RAG_CHUNK_OVERLAP` (originally a character-overlap knob for
-    the old splitter) is interpreted here as "carry the last message of
-    the previous chunk into the next one" whenever it's non-zero — a
-    message-aware analogue of the same idea, not a literal character
-    count, since chunk boundaries are now message boundaries.
-    """
     if not docs:
         return []
 
@@ -501,29 +366,6 @@ def chunk_documents(docs: list[Document]) -> list[Document]:
     return chunks
 
 
-# ---------------------------------------------------------------------------
-# Index build / load
-# ---------------------------------------------------------------------------
-# Phase 6: both backends now accept a `fingerprint` (the same
-# chat+filters+user fingerprint rag.py already builds) and, when
-# `config.RAG_PERSIST_INDEX` is on, persist to / load from disk under
-# that fingerprint. This means:
-#   - Same fingerprint, same Streamlit session -> served from
-#     `st.cache_resource` (rag.get_or_build_index); this code never runs.
-#   - Same fingerprint, NEW session / after a process restart -> loaded
-#     from disk here instead of re-embedding every message.
-#   - Different fingerprint (new upload, changed filters/user) -> a
-#     fresh index is built and saved under its own fingerprint; chats
-#     never share or collide with each other's persisted index.
-#
-# Phase 21: every persisted index is now paired with a small sidecar
-# metadata file recording which embedding backend/model/dimension built
-# it. This is what lets a reload safely PIN the query-time embedding
-# function to the exact same provider the index's vectors came from
-# (see FallbackEmbeddings) instead of guessing — and what lets a stale
-# index (built by a provider that's since been disabled/exhausted) be
-# detected and discarded rather than silently queried with mismatched
-# vectors.
 def _faiss_index_dir(fingerprint: str) -> Path:
     return config.VECTOR_STORE_DIR / "faiss" / fingerprint
 
@@ -555,10 +397,7 @@ def _write_meta(index_dir: Path, backend: str, model: str, dimension: int) -> No
 
 
 def discard_persisted_index(fingerprint: str, backend: str = "faiss") -> None:
-    """Delete a persisted index (and its metadata) for `fingerprint` so
-    the NEXT build starts completely fresh instead of reloading a stale,
-    now-incompatible index (e.g. its pinned provider ran out of quota or
-    had its key revoked). Safe to call even if nothing is persisted."""
+   
     try:
         if backend == "chroma":
             return  # Chroma persistence is a shared directory keyed by collection name, not a single deletable folder per fingerprint
@@ -613,14 +452,7 @@ def _chroma_persist_dir() -> Path:
 
 def build_chroma_index(docs: list[Document], fingerprint: Optional[str] = None,
                         persist_directory: Optional[Path] = None):
-    """Build (or load a persisted) ChromaDB index from documents.
-
-    The collection name is scoped by `fingerprint` so two different
-    chats (or the same chat under different filters/user) never read or
-    write each other's vectors in the shared persist directory — the
-    original code used one fixed collection name for every chat, which
-    would have silently mixed embeddings across uploads.
-    """
+  
     from langchain_chroma import Chroma
 
     global EMBEDDINGS_BACKEND, EMBEDDINGS_MODEL
@@ -662,26 +494,7 @@ def build_chroma_index(docs: list[Document], fingerprint: Optional[str] = None,
 
 
 def build_index(df: pd.DataFrame, backend: Optional[str] = None, fingerprint: Optional[str] = None):
-    """Build a vector index for `df` using the configured backend.
 
-    Args:
-        df: Chat DataFrame to index.
-        backend: "faiss" or "chroma". Defaults to config.VECTOR_STORE_BACKEND.
-        fingerprint: Stable cache/persistence key (chat + filters +
-            selected user). See rag.py. When omitted, the index is
-            still built correctly but skips disk persistence, since
-            there's no stable key to save/load it under.
-
-    Returns:
-        A LangChain VectorStore (empty-safe: returns None if `df` has
-        no indexable text).
-
-    Raises:
-        EmbeddingRequestError: no configured embedding provider (Gemini,
-            OpenRouter, or the always-available local fallback) could
-            embed this chat's text. Always a user-safe message — see
-            `_embed_texts_with_fallback`.
-    """
     docs = chunk_documents(messages_to_documents(df))
     if not docs:
         return None
