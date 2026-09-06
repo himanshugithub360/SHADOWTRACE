@@ -1,47 +1,4 @@
-"""
-helper.py
-=========
-Chat statistics and data-shaping functions. Each function takes
-`(selected_user, df)` and returns the numbers/DataFrames that app.py
-hands off to charts.py for plotting.
 
-Backward compatibility
------------------------
-Every function name, argument order, and return type from the original
-version is preserved so app.py (and any future code depending on this
-module) keeps working unchanged. Only internals were cleaned up:
-type hints, docstrings, PEP8 formatting, and safer file handling
-(`with open(...)` instead of a bare `open()` that never gets closed).
-
-New in this phase
-------------------
-- `hourly_activity`: message counts per hour-of-day (0-23), used by the
-  new interactive "Hourly Analysis" chart.
-
-Part 7 - caching
-------------------
-Every function below does a pure-Python pass over every message
-(`.split()`, character-by-character emoji scans, `Counter`, or
-`WordCloud.generate()`). `filtered_df` is already cached per
-(fingerprint, selected_user, filters) by `data_layer.get_filtered_view`,
-but Streamlit reruns the *entire* script top-to-bottom on any widget
-interaction anywhere in the app -- including ones in unrelated tabs
-(NLP dropdowns, chart toggles, etc.). Without caching here, every one
-of those unrelated reruns re-scans the full message list again, which
-is the dominant cost at 50k-100k+ messages (word cloud generation and
-the word/emoji loops in particular).
-
-Every public function is now a thin wrapper that computes a cheap
-content key (via `nlp_helper.content_key`, the same mechanism already
-used by sentiment.py/topics.py/toxicity.py) and delegates to a
-`@st.cache_data`-decorated private function. Behavior, return types,
-and function signatures are unchanged -- a cache hit returns exactly
-what the uncached call would have computed. Cheap single-pass
-operations that were already effectively O(1) relative to the loop-
-based ones (day/month/hour value_counts, the heatmap pivot) are left
-uncached, since a cache lookup would cost about as much as recomputing
-them.
-"""
 from __future__ import annotations
 
 from collections import Counter
@@ -112,12 +69,7 @@ def fetch_stats(selected_user: str, df: pd.DataFrame) -> Tuple[int, int, int, in
 
 @st.cache_data(show_spinner=False)
 def _most_busy_users_cached(_df: pd.DataFrame, key: str) -> Tuple[pd.Series, pd.DataFrame]:
-    # WhatsApp's own system messages ("added you", "changed the group icon",
-    # etc.) are attributed to a synthetic GROUP_NOTIFICATION_USER row, the
-    # same placeholder already excluded from the word cloud/word-frequency
-    # helpers above -- it isn't a real participant, so it never belongs in
-    # a "who's most active" ranking. Excluded here for consistency with
-    # that existing behavior.
+  
     _df = _df[_df["user"] != config.GROUP_NOTIFICATION_USER]
     x = _df["user"].value_counts().head()
     percent_df = round((_df['user'].value_counts() / _df.shape[0]) * 100, 2).reset_index()
