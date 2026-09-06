@@ -1,72 +1,25 @@
-"""
-config.py
-=========
-Centralized configuration for the WhatsApp Chat Analyzer.
 
-Why this file exists
----------------------
-Instead of scattering "magic strings" (colors, file paths, page titles)
-across app.py / helper.py / charts.py, we keep them all here. This makes
-the app easier to re-theme, re-brand, or reconfigure without hunting
-through every file.
-
-This module has ZERO dependency on Streamlit, so it can be imported by
-any other module (including sentiment.py, topics.py, or ai_helper.py)
-without creating circular imports.
-
-Phase 5 note
--------------
-The only new dependency added in Phase 5 is `python-dotenv`, used to
-load `.env` so API keys never need to be hard-coded or passed on the
-command line. Nothing else about this file's "no Streamlit" contract
-changed.
-"""
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Loads a `.env` file (if present) in the project root into os.environ.
-# Safe to call even if no `.env` exists — every AI setting below still
-# has a sane default so the rest of the app (Phases 1-4) works with
-# zero configuration.
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
-# BASE_DIR points to the folder that contains this config.py file. Using
-# this instead of a relative string like "stop_hinglish.txt" means the app
-# works no matter which directory you launch `streamlit run` from.
 BASE_DIR: Path = Path(__file__).resolve().parent
 
-# Hinglish (Hindi + English) stop-words used to clean text before building
-# the word cloud / most-common-words chart / Phase 4 NLP features.
 STOPWORDS_PATH: Path = BASE_DIR / "stop_hinglish.txt"
 
 # ---------------------------------------------------------------------------
 # Page settings
 # ---------------------------------------------------------------------------
 PAGE_TITLE: str = "SHADOWTRACE"
-# The browser tab favicon: the same gradient-diamond mark used for the
-# in-app brand lockup (sidebar, landing hero, loading screen). Falls back
-# to a plain glyph if the asset is ever missing, so the app never crashes
-# over a missing icon file.
+
 LOGO_PATH: Path = BASE_DIR / "assets" / "logo.png"
 PAGE_ICON = str(LOGO_PATH) if LOGO_PATH.exists() else "◆"
 LAYOUT: str = "wide"
 
-# ---------------------------------------------------------------------------
-# Theming - shared across every Plotly chart so the dashboard feels
-# consistent instead of every chart picking random default colors.
-#
-# SHADOWTRACE UI redesign: these five constants + PLOTLY_TEMPLATE are the
-# ONLY things changed in this file for the redesign. They're pure color
-# values consumed exclusively by charts.py's `color_discrete_sequence=` /
-# `template=` calls (see that file) — nothing here touches analytics,
-# caching, or any computed value. Swapping them is equivalent to
-# re-skinning the charts, not recalculating them.
-# ---------------------------------------------------------------------------
+
 PRIMARY_COLOR: str = "#7c5cff"     # Electric violet — primary brand accent
 SECONDARY_COLOR: str = "#22d3ee"   # Cyan — secondary accent
 ACCENT_COLOR: str = "#a78bfa"      # Soft violet — tertiary accent
@@ -84,10 +37,7 @@ COLOR_SEQUENCE: list[str] = [
     "#f87171",
 ]
 
-# "plotly_dark" matches the SHADOWTRACE dark-first interface; charts.py's
-# `_apply_theme()` additionally sets transparent chart backgrounds so
-# each chart blends into its surrounding card instead of painting its
-# own dark rectangle.
+
 PLOTLY_TEMPLATE: str = "plotly_dark"
 
 # ---------------------------------------------------------------------------
@@ -110,13 +60,7 @@ MONTH_ORDER: list[str] = [
 MEDIA_PLACEHOLDER: str = "<Media omitted>"
 GROUP_NOTIFICATION_USER: str = "group_notification"
 
-# ---------------------------------------------------------------------------
-# Phase 3 — Advanced Analytics constants (see analytics.py)
-# ---------------------------------------------------------------------------
-# A message sent by a different user within this many minutes of the
-# previous one counts as a "reply" for Response Time Analysis. Gaps
-# longer than this (e.g. overnight) are treated as a new conversation
-# instead of a slow reply, so they don't distort the average.
+
 REPLY_GAP_CAP_MINUTES: int = 180
 
 # A silence longer than this (minutes) marks the next message as the
@@ -171,91 +115,777 @@ ENGAGEMENT_WEIGHTS: dict[str, float] = {
     "consistency": 0.15,
 }
 
-# ---------------------------------------------------------------------------
-# Phase 4 — NLP constants (see nlp_helper.py, sentiment.py, topics.py,
-# toxicity.py). Nothing above this section was changed.
-# ---------------------------------------------------------------------------
 
-# VADER compound-score cutoffs used to bucket a message into
-# Positive / Neutral / Negative. These are VADER's own documented
-# defaults, exposed here so they're tunable without touching sentiment.py.
 SENTIMENT_POSITIVE_THRESHOLD: float = 0.05
 SENTIMENT_NEGATIVE_THRESHOLD: float = -0.05
 
-# Emotion Detection lexicon: keyword/phrase cues (checked as substrings
-# of the lowercased message) for each emotion bucket. Deliberately small
-# and interpretable — a stand-in for a trained classifier, not a
-# replacement for one. Extend freely.
 EMOTION_LEXICON: dict[str, list[str]] = {
     "Happy": [
         "haha", "hehe", "lol", "lmao", "great", "awesome", "nice", "good news",
-        "love it", "amazing", "yay", "glad", "happy", "khushi", "badhiya", "mast",
+        "love it", "amazing", "yay", "glad", "happy", "khushi", "badhiya", "mast", "love", "love u", "khushi", "khush", "khush hu",
+        "khush hoon", "bahut khush",
+        "bohot khush", "bohut khush",
+        "khushiyan",
+        "badhiya", "badiya",
+        "bahut badhiya", "bohot badhiya",
+        "mast", "mast hai", "ekdum mast",
+        "full mast",
+        "maza", "maza aaya", "maza aa gaya",
+        "mazza aaya", "mazza aa gaya",
+        "sahi", "sahi hai",
+        "kya baat hai",
+        "wah", "wah wah",
+        "waah", "waah waah",
+        "arre wah", "are wah",
+        "kamaal", "shandaar",
+        "zabardast", "jhakaas",
     ],
     "Excited": [
         "can't wait", "cant wait", "so excited", "omg", "let's go", "lets go",
         "finally", "woohoo", "yesss", "super excited", "pumped",
+        "excited", "so excited", "very excited",
+        "super excited", "really excited",
+        "extremely excited", "im excited",
+        "i'm excited",
+
+        # Anticipation
+        "can't wait", "cant wait",
+        "cannot wait", "waiting eagerly",
+        "looking forward",
+        "really looking forward",
+        "so looking forward",
+        "eagerly waiting",
+
+        # Celebration / hype
+        "omg", "omgg", "omggg",
+        "let's go", "lets go",
+        "yeahhh", "yeaahhh",
+        "yes", "yess", "yesss", "yessss",
+        "woo", "wooo", "woohoo",
+        "wohoo", "wohooo",
+        "yay", "yayyy",
+        "finally", "finallyyy",
+        "we did it", "made it",
+
+        # Energy / enthusiasm
+        "pumped", "so pumped",
+        "hyped", "so hyped",
+        "hype", "lets do this",
+        "let's do this",
+        "bring it on",
+        "this is gonna be awesome",
+        "this will be amazing",
+        "so ready", "readyyy",
+
+        # Internet slang
+        "yaaas", "yaaass",
+        "slay", "fire", "lit",
+        "lets goo", "letss gooo",
+        "w", "big w",
+        "goated",
+
+        # Hinglish / Hindi
+        "bahut excited", "bohot excited",
+        "intezaar nahi ho raha",
+        "wait nahi ho raha",
+        "wait nhi ho raha",
+        "bahut maza aayega",
+        "maza aane wala hai",
+        "kya baat", "mast hoga",
+        "full excited",
+        "josh", "full josh",
+
+        # Emojis
+        "🤩", "🥳", "🎉", "🔥",
+        "🚀", "🙌", "💃", "🕺",
+        "😆", "😱",
     ],
     "Sad": [
         "sad", "miss you", "miss u", "upset", "cry", "crying", "sorry to hear",
         "dukhi", "udaas", "heartbroken", "disappointed",
+
+        # Direct sadness
+        "sad", "so sad", "very sad",
+        "really sad", "feeling sad",
+        "feeling low", "feeling down",
+        "down", "depressed",
+        "unhappy", "miserable",
+        "heartbroken", "broken",
+
+        # Missing someone
+        "miss you", "miss u",
+        "miss ya", "missing you",
+        "missing u", "i miss you",
+        "i miss u", "miss him",
+        "miss her", "miss them",
+        "miss those days",
+
+        # Crying
+        "cry", "crying", "cried",
+        "tears", "in tears",
+        "want to cry", "feel like crying",
+        "can't stop crying",
+        "cant stop crying",
+        "😭", "😢", "🥺",
+
+        # Disappointment
+        "disappointed", "so disappointed",
+        "disappointment",
+        "let down", "feeling let down",
+        "expected better",
+        "didn't expect this",
+        "didnt expect this",
+
+        # Emotional pain
+        "hurt", "hurts", "hurt me",
+        "feeling hurt", "pain",
+        "painful", "it hurts",
+        "feeling broken",
+        "lost", "feeling lost",
+        "lonely", "alone",
+        "feeling alone",
+        "empty", "feeling empty",
+
+        # Regret / sympathy
+        "sorry to hear",
+        "sorry about that",
+        "feel sorry",
+        "unfortunate",
+        "thats sad", "that's sad",
+        "so unfortunate",
+        "what a shame",
+
+        # Hinglish / Hindi
+        "dukhi", "udaas",
+        "bahut udaas", "bohot udaas",
+        "dil toot gaya",
+        "dil dukha",
+        "dil dukh gaya",
+        "dil dukhta hai",
+        "bura laga",
+        "bahut bura laga",
+        "bohot bura laga",
+        "mann udaas hai",
+        "man udaas hai",
+        "akela", "akeli",
+        "akela feel kar raha",
+        "yaad aa rahi hai",
+        "bahut yaad aa raha",
+        "rona aa raha hai",
+        "ro raha hu",
+        "ro rahi hu",
+        "aankhon mein aansu",
+        "aansu",
+
+        # Emojis
+        "😢", "😭", "🥺",
+        "😞", "😔", "😟",
+        "💔", "😿",
     ],
     "Angry": [
         "angry", "furious", "annoyed", "irritated", "gussa", "pagal kar diya",
         "so frustrating", "hate this", "fed up", "not fair",
+
+        "angry", "so angry", "very angry",
+        "really angry", "furious",
+        "rage", "raging", "mad",
+        "so mad", "pissed",
+        "pissed off", "annoyed",
+        "irritated", "frustrated",
+        "so frustrated", "fed up",
+
+        # Complaints / frustration
+        "hate this", "hate it",
+        "i hate this", "i hate it",
+        "this sucks", "sucks",
+        "worst", "so bad",
+        "not fair", "unfair",
+        "enough is enough",
+        "had enough",
+        "sick of this",
+        "tired of this",
+        "can't take this anymore",
+        "cant take this anymore",
+
+        # Annoyance
+        "stop it", "just stop",
+        "leave me alone",
+        "dont disturb me",
+        "don't disturb me",
+        "so annoying",
+        "annoying", "irritating",
+        "what the hell",
+        "wtf", "wth",
+        "seriously",
+
+        # Conflict
+        "how dare you",
+        "are you serious",
+        "you ruined it",
+        "you ruined everything",
+        "why would you do that",
+        "what is wrong with you",
+
+        # Hinglish / Hindi
+        "gussa", "gusse mein",
+        "bahut gussa", "bohot gussa",
+        "gussa aa raha hai",
+        "gussa aa gaya",
+        "mujhe gussa aa raha hai",
+        "pagal", "pagal kar diya",
+        "dimag kharab",
+        "dimaag kharab",
+        "dimag mat kharab kar",
+        "dimaag mat kharab kar",
+        "irritate mat kar",
+        "irritating hai",
+        "pak gaya", "pak gayi",
+        "tang aa gaya",
+        "tang aa gayi",
+        "bas karo", "chup karo",
+        "bakwas", "faltu",
+        "kya bakwas hai",
+        "bekaar", "ghatiya",
+        "bilkul pasand nahi",
+        "nafrat hai",
+        "chidh", "chidh raha hai",
+
+        # Emojis
+        "😡", "😠", "🤬",
+        "😤", "👿",
     ],
 }
 
 # Emoji cues per emotion (checked per-character, so combine with the
 # lexicon above rather than replacing it).
 EMOTION_EMOJI: dict[str, set[str]] = {
-    "Happy": {"😀", "😁", "😂", "🙂", "😊", "😄", "😃", "😅"},
-    "Excited": {"🤩", "🎉", "🥳", "🔥", "🙌"},
-    "Sad": {"😢", "😭", "😞", "😔", "🥺"},
-    "Angry": {"😠", "😡", "🤬"},
+    "Happy": {
+        # Smiling / happiness
+        "😀", "😁", "😄", "😃", "😆",
+        "😊", "☺️", "🙂", "🙃",
+
+        # Laughter / amusement
+        "😂", "🤣", "😅",
+
+        # Affection / positive feelings
+        "🥰", "😍", "😘", "😚",
+        "😇", "🤗",
+
+        # Positive gestures
+        "👍", "👏", "🫶",
+        "❤️", "💖", "💕", "💗",
+    },
+
+    "Excited": {
+        # Excitement / celebration
+        "🤩", "🥳", "🎉", "🎊",
+        "🙌", "🔥", "✨",
+
+        # High energy
+        "🚀", "💥", "💫",
+        "⚡", "🎯",
+
+        # Enthusiasm
+        "🤪", "💃", "🕺",
+
+        # Achievement / success
+        "🏆", "🥇", "🎁",
+        "🎈", "🎂",
+    },
+
+    "Sad": {
+        # Crying
+        "😢", "😭", "🥹",
+
+        # Sad expressions
+        "😞", "😔", "😟",
+        "🙁", "☹️", "😕",
+
+        # Emotional pain
+        "🥺", "💔",
+
+        # Loneliness / disappointment
+        "😿", "😩",
+    },
+
+    "Angry": {
+        # Direct anger
+        "😠", "😡", "🤬",
+        "👿", "💢",
+
+        # Frustration
+        "😤", "😒", "🙄",
+        "😑", "😫",
+
+        # Aggressive gestures
+        "👎", "🖕",
+    },
 }
 
 # Intent Classification: keyword cues (checked as substrings) per intent
 # label. A message matching none of these is labeled "Other".
 INTENT_KEYWORDS: dict[str, list[str]] = {
     "Study": [
-        "exam", "assignment", "homework", "syllabus", "lecture", "class today",
-        "study", "padhai", "notes", "college", "university", "semester", "revision",
+        # General study
+        "study", "studying", "study session", "study plan",
+        "padhai", "padhna", "padh raha", "padh rahi",
+        "padhne", "revision", "revise", "revising",
+
+        # Academic activities
+        "exam", "exams", "test", "quiz",
+        "assignment", "assignments",
+        "homework", "hw",
+        "project submission", "submission",
+        "practical", "lab", "lab work",
+        "viva", "presentation",
+
+        # Classes
+        "lecture", "lectures",
+        "class", "class today",
+        "online class", "offline class",
+        "attend class", "attendance",
+        "teacher", "professor", "faculty",
+
+        # Study material
+        "notes", "study notes",
+        "syllabus", "chapter", "topic",
+        "unit", "module", "subject",
+        "book", "textbook",
+        "reference", "pdf",
+        "question paper", "previous year",
+
+        # Educational institutions
+        "college", "university",
+        "school", "campus",
+        "semester", "academic",
+
+        # Exam-related Hinglish
+        "exam hai", "paper hai",
+        "paper dena", "paper ki tayari",
+        "exam preparation",
+        "padhai karni hai",
+        "padhna hai",
+        "revision karni hai",
+        "assignment karna hai",
     ],
+
     "Work": [
-        "meeting", "deadline", "office", "boss", "client", "project", "report",
-        "salary", "resign", "interview", "job", "task", "presentation", "shift",
+        # General work
+        "work", "working", "office",
+        "office work", "work from home",
+        "wfh", "remote work",
+
+        # Meetings
+        "meeting", "meet", "call",
+        "conference call",
+        "team meeting", "client meeting",
+        "standup", "daily standup",
+
+        # Tasks and projects
+        "task", "tasks", "workload",
+        "project", "projects",
+        "report", "documentation",
+        "deliverable", "deliverables",
+        "requirement", "requirements",
+
+        # Deadlines
+        "deadline", "due date",
+        "submission deadline",
+        "urgent", "priority",
+
+        # Workplace
+        "boss", "manager",
+        "team lead", "colleague",
+        "coworker", "employee",
+        "client", "stakeholder",
+
+        # Career
+        "job", "career",
+        "interview", "job interview",
+        "offer letter",
+        "joining", "internship",
+        "intern", "promotion",
+        "resign", "resignation",
+        "notice period",
+
+        # Salary
+        "salary", "paycheck",
+        "pay", "bonus",
+        "increment",
+
+        # Presentations
+        "presentation", "ppt",
+        "demo", "review",
+
+        # Hinglish
+        "office jana hai",
+        "office jaana hai",
+        "kaam", "kaam hai",
+        "kaam kar raha",
+        "kaam kar rahi",
+        "meeting hai",
+        "deadline hai",
+        "client call",
+        "boss ne bola",
+        "task complete",
+        "kaam khatam",
     ],
+
     "Travel": [
-        "flight", "ticket", "trip", "vacation", "hotel", "booking", "passport",
-        "visa", "airport", "train", "itinerary", "travel", "ghumne",
+        # General travel
+        "travel", "travelling", "traveling",
+        "trip", "tour", "vacation",
+        "holiday", "holiday trip",
+        "journey", "tourism",
+
+        # Flights
+        "flight", "flights",
+        "flight ticket",
+        "boarding pass",
+        "departure", "arrival",
+        "layover",
+
+        # Booking
+        "ticket", "tickets",
+        "booking", "booked",
+        "reservation",
+        "cancel booking",
+
+        # Accommodation
+        "hotel", "hostel",
+        "resort", "stay",
+        "accommodation",
+        "check in", "check out",
+
+        # Documents
+        "passport", "visa",
+        "travel insurance",
+        "immigration",
+
+        # Transportation
+        "airport", "train",
+        "railway station",
+        "bus", "cab",
+        "taxi", "metro",
+        "road trip",
+        "driving",
+
+        # Planning
+        "itinerary", "travel plan",
+        "destination",
+        "places to visit",
+        "sightseeing",
+        "backpacking",
+
+        # Hinglish
+        "ghumne", "ghoomne",
+        "ghumne jana",
+        "ghoomne jana",
+        "trip pe", "trip par",
+        "vacation pe",
+        "flight hai",
+        "train hai",
+        "ticket book",
+        "hotel book",
+        "travel plan",
     ],
+
     "Shopping": [
-        "buy", "order", "cart", "discount", "sale", "delivery", "amazon", "flipkart",
-        "shopping", "price", "cod", "return policy", "kharidna",
+        # General shopping
+        "shopping", "shop",
+        "buy", "buying",
+        "purchase", "purchasing",
+        "kharidna", "kharidne",
+        "kharid raha", "kharid rahi",
+
+        # Online shopping
+        "order", "ordered",
+        "place order",
+        "online order",
+        "cart", "add to cart",
+        "checkout",
+
+        # Pricing
+        "price", "cost",
+        "expensive", "cheap",
+        "affordable",
+        "budget",
+        "price drop",
+
+        # Offers
+        "discount", "offer",
+        "sale", "deal",
+        "coupon", "promo code",
+        "cashback",
+        "buy one get one",
+        "bogo",
+
+        # Delivery
+        "delivery", "delivered",
+        "out for delivery",
+        "shipment", "shipping",
+        "tracking",
+
+        # Payment
+        "cod", "cash on delivery",
+        "payment", "pay online",
+
+        # Returns
+        "return", "refund",
+        "exchange",
+        "return policy",
+        "replacement",
+
+        # Platforms
+        "amazon", "flipkart",
+        "myntra", "meesho",
+        "ajio",
+
+        # Hinglish
+        "kharidna hai",
+        "order karna hai",
+        "order kiya",
+        "sale chal rahi",
+        "discount mila",
+        "kitne ka hai",
+        "price kya hai",
+        "mehenga", "sasta",
     ],
+
     "Movies": [
-        "movie", "film", "netflix", "cinema", "trailer", "watch party", "theatre",
-        "theater", "ott", "series", "episode", "webseries",
+        # General
+        "movie", "movies",
+        "film", "films",
+        "cinema",
+
+        # Watching
+        "watch", "watching",
+        "watch movie",
+        "movie night",
+        "watch party",
+
+        # Theatres
+        "theatre", "theater",
+        "multiplex",
+        "cinema hall",
+        "movie hall",
+        "showtime",
+        "show time",
+
+        # Streaming
+        "netflix",
+        "prime video",
+        "amazon prime",
+        "hotstar",
+        "disney hotstar",
+        "jiohotstar",
+        "zee5", "sonyliv",
+
+        # Content
+        "trailer", "teaser",
+        "release", "movie release",
+        "review", "movie review",
+        "spoiler",
+
+        # Series
+        "series", "tv series",
+        "web series",
+        "webseries",
+        "episode", "episodes",
+        "season", "next season",
+
+        # OTT
+        "ott", "streaming",
+
+        # Hinglish
+        "movie dekhne",
+        "film dekhne",
+        "picture dekhne",
+        "movie dekhi",
+        "film dekhi",
+        "picture",
+        "theatre jana",
+        "movie night",
     ],
+
     "Sports": [
-        "match", "cricket", "football", "score", "goal", "tournament", "ipl",
-        "world cup", "team won", "sports", "gym", "workout",
+        # General
+        "sports", "sport",
+        "game", "match",
+
+        # Cricket
+        "cricket", "ipl",
+        "odi", "test match",
+        "t20", "wicket",
+        "batting", "bowling",
+        "runs", "six", "four",
+        "century",
+
+        # Football
+        "football", "soccer",
+        "goal", "penalty",
+        "fifa", "champions league",
+
+        # Competitions
+        "tournament",
+        "league", "final",
+        "semi final", "semifinal",
+        "playoff",
+        "world cup",
+
+        # Scores
+        "score", "scorecard",
+        "won", "lost",
+        "team won",
+        "team lost",
+        "points",
+
+        # Fitness
+        "gym", "workout",
+        "exercise", "training",
+        "running", "jogging",
+        "fitness",
+        "cardio",
+        "weightlifting",
+        "lift", "lifting",
+
+        # Hinglish
+        "match dekh raha",
+        "match dekh rahi",
+        "match hai",
+        "cricket khelne",
+        "football khelne",
+        "gym jana",
+        "workout karna",
+        "team jeet gayi",
+        "match jeet gaye",
+        "khelne jana",
     ],
 }
 
-# Toxicity Detection: sub-score cutoff (0-1) above which a message is
-# flagged as Offensive/Abusive/Hate Speech instead of Clean. Used with
-# both the Detoxify model output and the keyword-heuristic fallback.
+# ---------------------------------------------------------------------------
+# Toxicity Detection
+# ---------------------------------------------------------------------------
+
+# Toxicity score cutoff (0-1) used by toxicity.py to classify a message.
 TOXICITY_THRESHOLD: float = 0.5
 
-# Toxicity heuristic word list (see toxicity.py — the optional Detoxify/
-# torch backend was removed to keep the app lightweight, so this keyword
-# heuristic is now the only toxicity signal, not a fallback for one).
-# Deliberately short and mild (no slurs) — a stand-in signal, not a
-# moderation-grade lexicon.
-PROFANITY_WORDS: set[str] = {
-    "stupid", "idiot", "dumb", "shut", "hate", "loser", "pathetic",
-    "moron", "trash", "worthless", "useless", "jerk", "nonsense",
+
+# ---------------------------------------------------------------------------
+# Toxicity heuristic word list
+# ---------------------------------------------------------------------------
+# Lightweight keyword/phrase-based toxicity signal.
+#
+# Single words and phrases are intentionally separated because phrases
+# provide stronger context.
+#
+# Example:
+#   "shut the door" -> not toxic
+#   "shut up"       -> potentially toxic
+#
+# No slurs are included. This is not a moderation-grade classifier.
+# ---------------------------------------------------------------------------
+
+
+TOXIC_WORDS: set[str] = {
+    # Intelligence-related insults
+    "stupid",
+    "idiot",
+    "idiotic",
+    "dumb",
+    "moron",
+    "fool",
+    "foolish",
+    "brainless",
+    "clueless",
+
+    # Personal insults
+    "loser",
+    "pathetic",
+    "worthless",
+    "useless",
+    "jerk",
+    "creep",
+    "weirdo",
+
+    # Strong negative descriptors
+    "disgusting",
+    "awful",
+    "terrible",
+    "horrible",
+    "ridiculous",
+
+    # Dismissive language
+    "trash",
+    "garbage",
+    "nonsense",
+    "rubbish",
+
+    # Mild profanity
+    "crap",
+    "bullshit",
+
+    # Hinglish / Hindi (Roman)
+    "pagal",
+    "bewakoof",
+    "bewakoofi",
+    "bakwas",
+    "faltu",
+    "ghatiya",
+    "nikamma",
+    "bekaar",
+}
+
+
+TOXIC_PHRASES: set[str] = {
+    # Direct hostility
+    "shut up",
+    "just shut up",
+    "hate you",
+    "hate u",
+    "i hate you",
+    "i hate u",
+
+    # Dismissive / hostile phrases
+    "get lost",
+    "go away",
+    "leave me alone",
+
+    # Personal attacks
+    "you are stupid",
+    "you're stupid",
+    "you are dumb",
+    "you're dumb",
+    "you are an idiot",
+    "you're an idiot",
+    "such an idiot",
+    "what an idiot",
+
+    # Negative personal attacks
+    "you are useless",
+    "you're useless",
+    "you are worthless",
+    "you're worthless",
+    "you are pathetic",
+    "you're pathetic",
+
+    # Strong negative statements
+    "you are trash",
+    "you're trash",
+    "absolute trash",
+    "complete nonsense",
+
+    # Hinglish / Hindi phrases
+    "pagal hai kya",
+    "pagal ho kya",
+    "dimag kharab hai",
+    "dimaag kharab hai",
+    "dimag mat kharab kar",
+    "dimaag mat kharab kar",
+    "kya bakwas hai",
+    "bakwas band kar",
+    "chup kar",
+    "chup ho ja",
 }
 
 # Spam Detection thresholds.
