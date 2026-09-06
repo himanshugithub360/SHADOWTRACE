@@ -828,12 +828,66 @@ TOXIC_WORDS: set[str] = {
     # Hinglish / Hindi (Roman)
     "pagal",
     "bewakoof",
-    "bewakoofi",
     "bakwas",
     "faltu",
     "ghatiya",
     "nikamma",
     "bekaar",
+    "chutiya",
+    "chutiye",
+    "gadha",
+    "gadhi",
+    "nalayak",
+    "kamina",
+    "kamine",
+    "harami",
+    "haramkhor",
+    "saala",
+    "saale",
+    "saali",
+    "kutta",
+    "kutiya",
+    "kutte",
+    "ullu",
+    "bakchod",
+    "chapri",
+    "jhantu",
+    "nalla",
+    "dhakkan",
+    "budhu",
+    "gawar",
+    "ganwar",
+    "lafanga",
+    "luchcha",
+    "badmaash",
+    "besharam",
+    "aad", "aand", "bahenchod", "behenchod", "bhenchod", "bhenchodd",
+"b.c.", "bc", "bakchod", "bakchodd", "bakchodi", "bevda", "bewda",
+"bevdey", "bewday", "bevakoof", "bevkoof", "bevkuf", "bewakoof",
+"bewkoof", "bewkuf", "bhadua", "bhaduaa", "bhadva", "bhadvaa",
+"bhadwa", "bhadwaa", "bhosada", "bhosda", "bhosdaa", "bhosdike",
+"bhonsdike", "bsdk", "b.s.d.k", "bhosdiki", "bhosdiwala",
+"bhosdiwale", "bhosadchodal", "bhosadchod", "bhosadchodal",
+"bhosadchod", "babbey", "bube", "bubey", "bur", "burr",
+"buurr", "buur", "charsi", "chooche", "choochi", "chuchi", "chhod",
+"chod", "chodd", "chudne", "chudney", "chudwa", "chudwaa",
+"chudwane", "chudwaane", "choot", "chut", "chute", "chutia",
+"chutiya", "chutiye", "chuttad", "chutad", "dalaal", "dalal",
+"dalle", "dalley", "fattu", "gadha", "gadhe", "gadhalund", "gaand",
+"gand", "gandu", "gandfat", "gandfut", "gandiya", "gandiye", "goo",
+"gu", "gote", "gotey", "gotte", "hag", "haggu", "hagne", "hagney",
+"harami", "haramjada", "haraamjaada", "haramzyada", "haraamzyaada",
+"haraamjaade", "haraamzaade", "haraamkhor", "haramkhor", "jhat",
+"jhaat", "jhaatu", "jhatu", "kutta", "kutte", "kuttey", "kutia",
+"kutiya", "kuttiya", "kutti", "landi", "landy", "laude", "laudey",
+"laura", "lora", "lauda", "ling", "loda", "lode", "lund", "launda",
+"lounde", "laundey", "laundi", "loundi", "laundiya", "loundiya",
+"lulli", "maar", "maro", "marunga", "madarchod", "madarchodd",
+"madarchood", "madarchoot", "madarchut", "motherfucker", "m.c.", "mc", "mamme",
+"mammey", "moot", "mut", "mootne", "mutne", "mooth", "muth", "nunni", "paaji", "paji", "pesaab", "pesab", "peshaab", "peshab",
+"pilla", "pillay", "pille", "pilley", "pisaab", "pisab", "pkmkb",
+"porkistan", "raand", "rand", "randi", "randy", "suar", "tatte",
+"tatti", "tatty", "ullu"
 }
 
 
@@ -886,6 +940,97 @@ TOXIC_PHRASES: set[str] = {
     "bakwas band kar",
     "chup kar",
     "chup ho ja",
+
+      # -------------------------------------------------------------------
+    # Abusive expressions based on the expanded word list
+    # -------------------------------------------------------------------
+    "gand mara",
+    "gaand mara",
+    "gand mar",
+    "gaand mar",
+
+    "mar ja",
+    "ja mar",
+    "mar jao",
+    "jaake mar",
+    "jaa ke mar",
+
+    "marunga tujhe",
+    "maar dunga",
+    "maar dungi",
+    "maarunga tujhe",
+    "maarungi tujhe",
+
+    "chutiya hai kya",
+    "chutiya hai tu",
+    "chutiya ho kya",
+    "chutiya aadmi",
+    "chutiya insaan",
+
+    "gandu hai kya",
+    "gandu hai tu",
+    "gandu aadmi",
+
+    "harami hai tu",
+    "harami aadmi",
+    "haramzada hai tu",
+    "haraamzada hai tu",
+
+    "kamina hai tu",
+    "kamine ho tum",
+    "kamina aadmi",
+
+    "kutte ki aulaad",
+    "kutta hai tu",
+    "kutta saala",
+
+    "saale kutte",
+    "saala kutta",
+    "saale harami",
+
+    "madarchod hai tu",
+    "madarchod saala",
+    "madarchod aadmi",
+
+    "bahenchod hai tu",
+    "behenchod hai tu",
+    "bhenchod hai tu",
+
+    "bhosdike hai tu",
+    "bhosdiwale hai tu",
+    "bhosdiwale aadmi",
+
+    "gand mein dum",
+    "gaand mein dum",
+
+    "gand fat gayi",
+    "gaand fat gayi",
+    "gand phat gayi",
+    "gaand phat gayi",
+
+    # -------------------------------------------------------------------
+    # Variations commonly seen in chats
+    # -------------------------------------------------------------------
+    "bc kya hai",
+    "mc kya hai",
+    "bsdk hai tu",
+
+    "abe chutiye",
+    "abe chutiya",
+    "oye chutiye",
+    "oye chutiya",
+
+    "abe gadhe",
+    "oye gadhe",
+
+    "abe saale",
+    "oye saale",
+
+    "abe kutte",
+    "oye kutte",
+
+    "saale haramkhor",
+    "harami saale",
 }
 
 # Spam Detection thresholds.
