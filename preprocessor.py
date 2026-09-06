@@ -1,26 +1,4 @@
-"""
-preprocessor.py
-================
-Turns a raw, exported WhatsApp chat .txt file into a clean pandas
-DataFrame that the rest of the app (helper.py, charts.py, app.py) can
-work with.
 
-Backward compatibility
------------------------
-The public function `preprocess(data: str) -> pd.DataFrame` keeps the
-exact same name and signature as the original version, and every column
-that existed before (user, message, date, year, month_num, month,
-only_date, day, day_name, hour, minute, period) is still produced.
-
-New in this phase
-------------------
-- `week_num`   : ISO week number (1-53), used by the new "Week" sidebar
-                 filter in app.py.
-- `date_str`   : a plain string version of the date (useful for search /
-                 export features that don't want a datetime object).
-- Debug `print()` statements were removed and replaced with an optional
-  `verbose` flag so the app no longer spams the terminal on every upload.
-"""
 import re
 import pandas as pd
 
