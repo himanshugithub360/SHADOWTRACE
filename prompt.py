@@ -1,23 +1,4 @@
-"""
-prompt.py
-=========
-Phase 5 — AI Assistant: every LangChain prompt template used by
-ai_helper.py / rag.py lives here, in one place, so tone and output
-format stay consistent across features and can be tuned without
-touching the calling code.
 
-Design principle
------------------
-Every prompt explicitly tells the model to rely on the DATA block it is
-given (real numbers from helper.py/analytics.py, or retrieved chat
-excerpts) rather than inventing facts, and to say so plainly when the
-data provided isn't enough to answer. This project is analyzing a real
-person's private conversations, so grounded, honest answers matter more
-than a confident-sounding guess.
-
-Nothing here imports Streamlit, pandas, or any AI SDK — it's pure
-string/template content, safe to import from anywhere.
-"""
 from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate
