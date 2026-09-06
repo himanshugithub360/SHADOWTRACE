@@ -1,17 +1,4 @@
-"""
-topics.py
-=========
-Phase 4 — NLP: topic modeling, keyword extraction, text summarization,
-and intent classification.
 
-Optional heavy dependencies (BERTopic, KeyBERT — and KeyBERT's own
-`sentence-transformers` dependency) are imported inside try/except
-blocks. If they aren't installed, every function transparently falls
-back to a lighter scikit-learn / rule-based equivalent so the app never
-crashes because of a missing package. See MIGRATION.md for the install
-commands that unlock the upgraded versions, and the `*_AVAILABLE` flags
-below that app.py uses to show which mode is active.
-"""
 from __future__ import annotations
 
 import importlib.util
@@ -27,24 +14,6 @@ import config
 import nav
 import nlp_helper
 
-# ---------------------------------------------------------------------------
-# Optional heavy dependencies (BERTopic, KeyBERT — and KeyBERT's own
-# `sentence-transformers` dependency) are NEVER imported or instantiated at
-# module import time. Both pull in torch/transformers, which is slow to
-# import and (for KeyBERT) slow to download/instantiate — doing that at
-# `import topics` time would make every Streamlit app startup pay that cost
-# even if the user never opens the Topics tab.
-#
-# Availability is instead checked with `importlib.util.find_spec`, which
-# only asks "is this package installed?" without actually importing it.
-# The real `import` + model construction happens lazily, inside the
-# functions below, the first time they're actually needed — and for
-# KeyBERT (a stateless model reused across calls) the loaded instance is
-# cached with `st.cache_resource` so it's only built once per session
-# rather than once per call. BERTopic is intentionally NOT cached this way
-# since a fresh instance must be fit to each call's documents (caching an
-# already-fit instance would silently reuse a stale topic model).
-# ---------------------------------------------------------------------------
 BERTOPIC_AVAILABLE = importlib.util.find_spec("bertopic") is not None
 
 try:
