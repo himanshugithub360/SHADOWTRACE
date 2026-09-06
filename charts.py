@@ -1,22 +1,4 @@
-"""
-charts.py
-=========
-Every visual in the dashboard is built here using Plotly Express / Graph
-Objects instead of matplotlib + seaborn. Centralizing chart construction:
 
-- Keeps app.py focused on layout/UI, not chart internals.
-- Guarantees a consistent color theme (see config.py) across all charts.
-- Makes every chart interactive (hover tooltips, zoom, pan) "for free".
-
-Each function takes the *already-computed* data (from helper.py) and
-returns a ready-to-render `plotly.graph_objects.Figure`, which app.py
-displays with `st.plotly_chart(fig, width='stretch')`.
-
-Note on the Word Cloud: WordCloud is inherently a raster image (words
-laid out and rotated to fill space), which isn't a Plotly chart type.
-We still avoid matplotlib entirely by rendering it as a plain image
-array (`st.image`) - see helper.create_wordcloud().
-"""
 from __future__ import annotations
 
 import pandas as pd
@@ -27,14 +9,7 @@ import config
 
 
 def _apply_theme(fig: go.Figure, title: str = "") -> go.Figure:
-    """Apply shared layout settings (template, title, margins) to a figure.
 
-    SHADOWTRACE redesign note: everything added here is presentational —
-    transparent backgrounds so the chart blends into its surrounding
-    dark card, light text/gridlines for readability, a dark hover
-    tooltip. No trace data, axis values, or computed statistics are
-    touched by this function.
-    """
     fig.update_layout(
         template=config.PLOTLY_TEMPLATE,
         title=title,
@@ -162,11 +137,6 @@ def emoji_pie_chart(emoji_df: pd.DataFrame, top_n: int = 8) -> go.Figure:
     return _apply_theme(fig, "Emoji Distribution")
 
 
-# ---------------------------------------------------------------------------
-# Phase 3 — Advanced Analytics charts (see analytics.py for the data
-# these functions expect; every function below is additive and doesn't
-# touch anything above this line).
-# ---------------------------------------------------------------------------
 def ranking_bar_chart(series: pd.Series, title: str, value_label: str) -> go.Figure:
     """Generic horizontal ranking bar chart for a Series indexed by user
     (or any other category) with a single numeric value per entry.
@@ -384,11 +354,7 @@ def engagement_score_chart(scores_df: pd.DataFrame) -> go.Figure:
     return ranking_bar_chart(series, "Engagement Score", "Score (0-100)")
 
 
-# ---------------------------------------------------------------------------
-# Phase 4 — NLP charts (see sentiment.py / topics.py / toxicity.py /
-# nlp_helper.py for the data these expect). Every function below is
-# additive; nothing above this line was touched.
-# ---------------------------------------------------------------------------
+
 def distribution_pie_chart(dist_df: pd.DataFrame, names_col: str, values_col: str, title: str) -> go.Figure:
     """Generic pie chart for any label/count distribution — reused by
     Sentiment, Emotion, Intent, Toxicity, and Language breakdowns instead
