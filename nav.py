@@ -1,27 +1,4 @@
-"""
-nav.py
-======
-Part 4 — True lazy section loading.
 
-Why this file exists
----------------------
-`st.tabs()` looks like it gives you separate pages, but it doesn't:
-Streamlit executes the body of EVERY `with tab:` block on EVERY rerun,
-regardless of which tab is visually active. With 27 tabs — several of
-them running NLP models, topic modeling, toxicity scoring, or touching
-the AI/RAG stack — that means switching to "Overview" was silently
-re-running Sentiment, Topics, Toxicity, and everything else, every
-single time.
-
-This module replaces that with manual, conditional navigation:
-exactly one top-level section (and, inside it, exactly one
-sub-section) is tracked in `st.session_state`. app.py branches on the
-returned string with plain `if/elif` — never `st.tabs()` — so only the
-`render_*()` function matching the current selection ever executes.
-
-Nothing in this module touches pandas, NLP, or AI — it's pure
-Streamlit UI plumbing, safe to import from app.py only.
-"""
 from __future__ import annotations
 
 import base64
