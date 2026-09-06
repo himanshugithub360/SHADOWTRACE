@@ -1,56 +1,3 @@
-"""
-ai_helper.py
-============
-Phase 5 — AI Assistant: LLM-powered features layered on top of every
-earlier phase. Nothing here replaces helper.py / analytics.py /
-sentiment.py — it *feeds their computed numbers* into an LLM so answers
-are grounded in real stats rather than the model guessing from raw chat
-text alone.
-
-AI Request Optimization (this revision) — 4-provider reliability
-------------------------------------------------------------------
-The AI Assistant now supports four providers -- Gemini (primary),
-Groq, OpenRouter, Mistral (fallbacks, in that order) -- through one
-central router (`_cached_ai_request`, invoked via `_run`). Every
-feature in this file still calls `_run()` exactly as before; none of
-them know or care how many providers exist. See config.py's "Central
-provider registry" section for the provider list/keys/models, and the
-module docstring above `_cached_ai_request` below for the full
-routing/caching contract.
-
-Note: OpenRouter replaces OpenAI as a GENERATION provider only. It is
-an OpenAI-compatible HTTP endpoint, so it reuses `langchain_openai`'s
-`ChatOpenAI` client pointed at a different `base_url` -- see
-`_build_provider_client`. Embeddings (vector_store.py) are untouched by
-this change and still prefer Gemini, then OpenAI, then a local
-fallback, independent of this generation chain.
-
-Graceful degradation
-----------------------
-Exactly like Phase 4's optional NLP packages, having no provider
-configured never crashes the app: `is_ai_configured()` is False, and
-every public function returns a friendly setup message instead of
-raising. app.py uses `is_ai_configured()` / `AI_BACKEND` to show a
-"configure your API key" notice in the AI tab.
-
-Feature -> function map (see README.md for the full table)
--------------------------------------------------------------
- 1. AI Chat Summary        -> ai_chat_summary
- 2. Monthly AI Summary     -> ai_monthly_summary
- 3. Weekly Summary         -> ai_weekly_summary
- 4. Daily Summary          -> ai_daily_summary
- 5. Ask Questions          -> ask_question
- 6. AI Insights            -> generate_insights
- 7. RAG                    -> rag.py (used by ask_question / semantic_search)
- 8. Chat with History      -> ask_question(..., chat_history=...)
- 9. Semantic Search        -> semantic_search
-10. AI Recommendations     -> ai_recommendations
-11. Conversation Highlights-> conversation_highlights
-12. AI-generated Reports   -> ai_report
-13. Personality Analysis   -> personality_analysis
-14. Friendship Analysis    -> friendship_analysis
-15. Conversation Quality   -> conversation_quality_score
-"""
 from __future__ import annotations
 
 import logging
@@ -73,24 +20,7 @@ import toxicity
 import utils
 from langchain_core.prompts import ChatPromptTemplate
 
-# ---------------------------------------------------------------------------
-# Silence the google-genai SDK's spurious AFC (automatic function calling)
-# log warning. Every Gemini call in this app goes through LangChain's
-# ChatGoogleGenerativeAI (see `_build_provider_client` below), which
-# internally calls google-genai's `Models.generate_content` directly --
-# and that SDK method logs "Direct use of automatic function calling
-# (AFC) in Models.generate_content is not recommended..." via
-# `logging.warning`, NOT `warnings.warn` (so `warnings.filterwarnings`
-# does nothing for it).
-#
-# This app never registers any tools/function-calling with Gemini (no
-# `.bind_tools()` anywhere in this file), so there is no actual AFC
-# happening -- the warning is a known SDK false-positive that fires even
-# for an empty/no-tools config: see
-# https://github.com/googleapis/python-genai/issues/2902. Raising the
-# level on the specific logger(s) suppresses just this noise without
-# touching real error/warning logging elsewhere; both plausible logger
-# names are covered since the exact one has varied across SDK versions.
+
 for _noisy_logger_name in ("google_genai.models", "google.genai.models", "google_genai", "google.genai"):
     logging.getLogger(_noisy_logger_name).setLevel(logging.ERROR)
 
@@ -122,13 +52,7 @@ _PROVIDER_LABELS: dict[str, str] = {
 AI_BACKEND: str = "none"  # last provider that actually answered; read by app.py
 LAST_PROVIDER_STATUS: str = ""  # last human status line (fallback banner); read by app.py
 
-# In-session cooldown bookkeeping: {provider_name: unix_timestamp_until}.
-# Populated only on a real quota failure, read only when routing a real
-# request -- see config.PROVIDER_QUOTA_COOLDOWN_SECONDS. Kept as a plain
-# module dict rather than st.session_state because it's meant to be a
-# process-wide "this key looked exhausted a moment ago" signal, not a
-# per-browser-tab one, and it must survive being read from inside a
-# st.cache_data-wrapped function.
+
 _provider_cooldowns: dict[str, float] = {}
 
 
@@ -609,25 +533,6 @@ def _status_message(provider: str, chain: list[str]) -> str:
     return f"\u26a0\ufe0f Primary provider unavailable -- response generated by {label} (fallback)."
 
 
-# ---------------------------------------------------------------------------
-# Central AI request layer (Phases 4-9, 17, 22) -- THE only place that
-# ever actually calls a provider. Cached by `st.cache_data` on
-# (feature, prompt_version, **prompt kwargs) -- deliberately NOT on
-# provider/model, so the cache is provider-agnostic (Phase 6/7): a cache
-# hit is 0 API calls regardless of which provider is currently up, and a
-# provider that becomes unavailable AFTER a successful cached answer
-# never triggers a duplicate generation on a different provider for the
-# same logical request. Every prompt kwarg (stats_block, messages_block,
-# question, history_block, user, ...) is itself derived from the current
-# chat fingerprint + filters + selected user, so this key is
-# automatically as specific as it needs to be.
-#
-# Internally, on a genuine cache MISS, this walks `_provider_chain()`
-# (max config.AI_MAX_PROVIDER_ATTEMPTS = 4 providers) and stops at the
-# first success -- normally exactly 1 provider is contacted. Failed
-# attempts raise `AIRequestError` instead of returning a string, so
-# `st.cache_data` never caches an error as if it were a real answer.
-# ---------------------------------------------------------------------------
 @st.cache_data(show_spinner=False)
 def _cached_ai_request(_template, feature: str, prompt_version: str, **kwargs) -> dict:
     chain = _provider_chain()
@@ -658,17 +563,10 @@ def _cached_ai_request(_template, feature: str, prompt_version: str, **kwargs) -
             if not text:
                 raise AIRequestError(f"{_PROVIDER_LABELS.get(provider, provider)} returned an empty response.")
 
-            # Fix 1: if this response looks truncated, retry AT MOST ONCE,
-            # on the SAME provider, with a larger (still bounded) output
-            # token budget -- never switch providers just because of
-            # truncation, and never loop.
+          
             finish_reason = _get_finish_reason(result)
             truncated = _looks_truncated(text, finish_reason)
-            # Debug-only (PERFORMANCE_DEBUG): every AI request records
-            # whether it was flagged as truncated -- and, below, whether a
-            # retry actually fired -- so a latency regression can be
-            # diagnosed (a retry roughly doubles one request's LLM time)
-            # instead of guessed at from the sidebar's total timing alone.
+         
             nav.set_perf_count("ai_truncation_flagged", f"{truncated} (finish_reason={finish_reason})")
             if truncated and config.LLM_MAX_OUTPUT_TOKENS < config.LLM_MAX_OUTPUT_TOKENS_RETRY_CAP:
                 retry_budget = min(config.LLM_MAX_OUTPUT_TOKENS * 2, config.LLM_MAX_OUTPUT_TOKENS_RETRY_CAP)
@@ -749,10 +647,7 @@ def _run(template, feature: str = "generic", **kwargs) -> str:
 
     AI_BACKEND = result["provider"]
     LAST_PROVIDER_STATUS = _status_message(result["provider"], _provider_chain())
-    # Debug-only (PERFORMANCE_DEBUG): which provider actually answered.
-    # Latency in "AI request (LLM)" varies a lot by provider (a rate-
-    # limited/free-tier provider can be far slower than others in the
-    # fallback chain) -- this makes that visible instead of guessed at.
+   
     nav.set_perf_count("ai_provider_used", result["provider"])
     return result["text"]
 
@@ -893,19 +788,7 @@ def _stats_snapshot(selected_user: str, df: pd.DataFrame, scope: str = "full") -
     safe("emotion", lambda: sentiment.emotion_distribution(selected_user, df).to_dict("records"))
     if selected_user == "Overall":
         safe("engagement", lambda: analytics.engagement_scores(df).to_dict("records"))
-    # Toxicity signal is intentionally "free-or-skip", not "always-on":
-    # `toxicity_summary` loads a real transformer model (Detoxify, via
-    # torch) the first time it's ever called in this process. Forcing
-    # that load here would mean opening the AI tab and clicking Summary
-    # /Recommendations/Insights -- features that have nothing to do with
-    # toxicity -- silently pays for a slow one-time model load + a full
-    # pass over every message. So the toxicity line is only included when
-    # the model is ALREADY loaded (e.g. the user already visited the
-    # Toxicity tab this session, or Detoxify isn't installed at all, in
-    # which case toxicity_summary uses the free keyword heuristic
-    # instead). This never changes analysis accuracy elsewhere -- the
-    # Toxicity tab itself is unaffected and always computes the real
-    # thing when the user actually asks for it.
+  
     if "toxicity" in wanted and ((not toxicity.DETOXIFY_AVAILABLE) or toxicity.detoxify_ready()):
         safe("toxicity", lambda: toxicity.toxicity_summary(selected_user, df).to_dict("records"))
     safe("language", lambda: nlp_helper.language_distribution(selected_user, df).to_dict())
@@ -1051,16 +934,6 @@ def ai_monthly_summary(selected_user: str, df: pd.DataFrame) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
-# 5b. Deterministic question routing (Phase 6 — Python-only, zero
-# LLM/RAG cost) for questions that already have one exact answer sitting
-# in helper.py / analytics.py / utils.py.
-# ---------------------------------------------------------------------------
-# Every matcher below is a narrow, specific regex. A question that only
-# loosely resembles one of these ("why does everyone talk so much at
-# night?") is deliberately left to fall through to the LLM/RAG path --
-# these handlers only fire on clean, unambiguous lookups where restating
-# the Python-computed number IS the correct, complete answer.
 def _det_message_counts(selected_user: str, df: pd.DataFrame) -> Optional[str]:
     stats = helper.fetch_stats(selected_user, df)
     if not stats:
