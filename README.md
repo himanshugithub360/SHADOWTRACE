@@ -8,11 +8,11 @@ SHADOWTRACE is an AI-powered conversation intelligence application built on Stre
 
 ---
 
-##  Try 🔷SHADOWTRACE
+## 🌐 Try SHADOWTRACE Online
 
 Experience SHADOWTRACE directly in your browser — no installation required.
 
-**Live Application:**  
+🚀 **Live Application:**  
 👉 [Launch SHADOWTRACE](https://shadowtrace.streamlit.app/)
 
 Upload your exported WhatsApp chat, apply filters, and uncover hidden patterns, people, moments, and AI-powered insights.
@@ -377,7 +377,7 @@ SHADOWTRACE/
 ## Installation
 
 ```bash
-git clone https://github.com/himanshugithub360/SHADOWTRACE
+git clone <your-repo-url>
 cd SHADOWTRACE
 
 python -m venv .venv
