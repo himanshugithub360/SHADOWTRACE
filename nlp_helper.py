@@ -1,20 +1,4 @@
-"""
-nlp_helper.py
-=============
-Phase 4 — NLP: shared utilities used by sentiment.py, topics.py, and
-toxicity.py — text cleaning, language detection, readability scoring,
-and word similarity.
-
-Design principle
------------------
-Every optional third-party library (`langdetect`, `textstat`) is
-imported inside a try/except. If a package listed in requirements.txt
-somehow isn't installed, the affected function degrades to a lighter,
-dependency-free fallback instead of crashing the whole app — every
-public function in this file always returns *something* usable.
-
-Follows the same `(selected_user, df)` convention as helper.py /
-analytics.py so it plugs into app.py the same way.
+ytics.py so it plugs into app.py the same way.
 """
 from __future__ import annotations
 
@@ -28,25 +12,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import config
 
-# ---------------------------------------------------------------------------
-# Part 5 — shared cache-key helper.
-# ---------------------------------------------------------------------------
-# sentiment.py, topics.py, toxicity.py, and this module all run per-message
-# NLP work (VADER, emotion/intent lexicons, toxicity, TF-IDF/YAKE/KeyBERT,
-# language detection...) keyed off `(selected_user, df)` — the same
-# convention as helper.py. `filtered_df` itself is already produced by
-# data_layer.get_filtered_view(), which is cached per
-# (fingerprint, selected_user, filters), so hashing the *whole* DataFrame
-# again here on every call would be redundant and, for `st.cache_data`,
-# expensive (pandas hashing is O(n)).
-#
-# Instead every NLP-result cache in this project keys off `content_key()`:
-# a cheap hash of just the 'message' column's values. That's sufficient to
-# guarantee correctness (Requirement in Part 5 doc: "a new uploaded chat
-# must never receive results from an old chat") because the message text
-# is exactly the input every one of these functions actually consumes —
-# any change in fingerprint, filters, or selected_user necessarily changes
-# which rows/messages are present, hence the hash.
+
 def content_key(df: pd.DataFrame, columns: tuple[str, ...] = ("user", "message")) -> str:
     """Cheap, deterministic cache key for a DataFrame's relevant columns.
 
@@ -268,17 +234,7 @@ def readability_by_user(df: pd.DataFrame) -> pd.DataFrame:
     return _readability_by_user_cached(df, content_key(df))
 
 
-# ---------------------------------------------------------------------------
-# Word Similarity
-# ---------------------------------------------------------------------------
-# Both functions below fit a fresh TF-IDF matrix as their "embedding".
-# word_similarity() and most_similar_words() are typically queried
-# several times in a row for the same selection (different word pairs /
-# target words picked from the same dropdown), so the expensive part —
-# fitting the vectorizer over the corpus — is cached per
-# (content, selected_user, min_df); scoring a specific word/pair against
-# an already-fit matrix is cheap and stays uncached (it's just an index
-# lookup + a single cosine_similarity call).
+
 @st.cache_data(show_spinner=False)
 def _tfidf_matrix_cached(_df: pd.DataFrame, key: str, selected_user: str, min_df: int):
     real = clean_messages(_df, selected_user)
