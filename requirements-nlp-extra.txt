@@ -1,5 +1,4 @@
-# Phase 4 — optional NLP upgrades.
-#
+
 # Nothing in requirements.txt depends on these. Every feature that can
 # use one of these packages (topics.py, toxicity.py) has a working
 # scikit-learn / rule-based fallback and checks an `*_AVAILABLE` flag,
