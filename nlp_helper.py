@@ -1,5 +1,4 @@
-ytics.py so it plugs into app.py the same way.
-"""
+
 from __future__ import annotations
 
 import re
